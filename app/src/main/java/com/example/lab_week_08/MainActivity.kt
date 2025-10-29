@@ -18,6 +18,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.lab_week_08.worker.FirstWorker
 import com.example.lab_week_08.worker.SecondWorker
+import com.example.lab_week_08.worker.ThirdWorker
 
 class MainActivity : AppCompatActivity() {
 
@@ -55,12 +56,20 @@ class MainActivity : AppCompatActivity() {
         val secondRequest = OneTimeWorkRequest
             .Builder(SecondWorker::class.java)
             .setConstraints(networkConstraints)
-            .setInputData(getIdInputData(FirstWorker
+            .setInputData(getIdInputData(SecondWorker
+                .INPUT_DATA_ID, id)
+            ).build()
+
+        val thirdRequest = OneTimeWorkRequest
+            .Builder(ThirdWorker::class.java)
+            .setConstraints(networkConstraints)
+            .setInputData(getIdInputData(ThirdWorker
                 .INPUT_DATA_ID, id)
             ).build()
 
         workManager.beginWith(firstRequest)
             .then(secondRequest)
+            .then(thirdRequest)
             .enqueue()
 
         workManager.getWorkInfoByIdLiveData(firstRequest.id).observe(this) {info ->
@@ -73,6 +82,16 @@ class MainActivity : AppCompatActivity() {
             if (info != null && info.state.isFinished) {
                 showResult("Second process is done")
                 launchNotificationService()
+            }
+        }
+
+        workManager.getWorkInfoByIdLiveData(thirdRequest.id).observe(this) { info ->
+            if (info != null && info.state.isFinished) {
+                val outputId = info.outputData.getString(ThirdWorker.OUTPUT_DATA_ID) ?: "N/A"
+                val message = "Third process is done"
+
+                showResult(message)
+                launchSecondNotificationService(message)
             }
         }
     }
@@ -99,6 +118,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         ContextCompat.startForegroundService(this, serviceIntent)
+    }
+
+    private fun launchSecondNotificationService(message: String) {
+        val serviceIntent = Intent(
+            this,
+            SecondNotificationService::class.java
+        ).apply {
+            putExtra(SecondNotificationService.EXTRA_MESSAGE, message)
+        }
+
+        startService(serviceIntent)
     }
 
     companion object {
